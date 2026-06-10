@@ -1,0 +1,78 @@
+{"pair_id": "p000", "source": "dog", "target": "cat", "source_desc": "a canine animal", "target_desc": "a feline animal", "unrelated": "banana"}
+{"pair_id": "p001", "source": "cat", "target": "dog", "source_desc": "a feline animal", "target_desc": "a canine animal", "unrelated": "car"}
+{"pair_id": "p002", "source": "apple", "target": "banana", "source_desc": "a crisp fruit often red or green", "target_desc": "a long yellow fruit", "unrelated": "doctor"}
+{"pair_id": "p003", "source": "banana", "target": "apple", "source_desc": "a long yellow fruit", "target_desc": "a crisp fruit often red or green", "unrelated": "lawyer"}
+{"pair_id": "p004", "source": "car", "target": "bicycle", "source_desc": "a motor vehicle", "target_desc": "a pedal-powered vehicle", "unrelated": "apple"}
+{"pair_id": "p005", "source": "bicycle", "target": "car", "source_desc": "a pedal-powered vehicle", "target_desc": "a motor vehicle", "unrelated": "cat"}
+{"pair_id": "p006", "source": "doctor", "target": "lawyer", "source_desc": "a medical professional", "target_desc": "a legal professional", "unrelated": "bicycle"}
+{"pair_id": "p007", "source": "lawyer", "target": "doctor", "source_desc": "a legal professional", "target_desc": "a medical professional", "unrelated": "orange"}
+{"pair_id": "p008", "source": "Paris", "target": "Tokyo", "source_desc": "the capital city of France", "target_desc": "the capital city of Japan", "unrelated": "guitar"}
+{"pair_id": "p009", "source": "Tokyo", "target": "Paris", "source_desc": "the capital city of Japan", "target_desc": "the capital city of France", "unrelated": "river"}
+{"pair_id": "p010", "source": "red", "target": "blue", "source_desc": "the color red", "target_desc": "the color blue", "unrelated": "chair"}
+{"pair_id": "p011", "source": "blue", "target": "red", "source_desc": "the color blue", "target_desc": "the color red", "unrelated": "window"}
+{"pair_id": "p012", "source": "hot", "target": "cold", "source_desc": "high in temperature", "target_desc": "low in temperature", "unrelated": "music"}
+{"pair_id": "p013", "source": "cold", "target": "hot", "source_desc": "low in temperature", "target_desc": "high in temperature", "unrelated": "garden"}
+{"pair_id": "p014", "source": "summer", "target": "winter", "source_desc": "the warmest season", "target_desc": "the coldest season", "unrelated": "doctor"}
+{"pair_id": "p015", "source": "winter", "target": "summer", "source_desc": "the coldest season", "target_desc": "the warmest season", "unrelated": "piano"}
+{"pair_id": "p016", "source": "teacher", "target": "student", "source_desc": "a person who teaches", "target_desc": "a person who learns", "unrelated": "mountain"}
+{"pair_id": "p017", "source": "student", "target": "teacher", "source_desc": "a person who learns", "target_desc": "a person who teaches", "unrelated": "coffee"}
+{"pair_id": "p018", "source": "king", "target": "queen", "source_desc": "a male monarch", "target_desc": "a female monarch", "unrelated": "bicycle"}
+{"pair_id": "p019", "source": "queen", "target": "king", "source_desc": "a female monarch", "target_desc": "a male monarch", "unrelated": "banana"}
+{"pair_id": "p020", "source": "left", "target": "right", "source_desc": "the left side", "target_desc": "the right side", "unrelated": "dog"}
+{"pair_id": "p021", "source": "right", "target": "left", "source_desc": "the right side", "target_desc": "the left side", "unrelated": "cat"}
+{"pair_id": "p022", "source": "yes", "target": "no", "source_desc": "an affirmative answer", "target_desc": "a negative answer", "unrelated": "Paris"}
+{"pair_id": "p023", "source": "no", "target": "yes", "source_desc": "a negative answer", "target_desc": "an affirmative answer", "unrelated": "Tokyo"}
+{"pair_id": "p024", "source": "positive", "target": "negative", "source_desc": "a positive label", "target_desc": "a negative label", "unrelated": "summer"}
+{"pair_id": "p025", "source": "negative", "target": "positive", "source_desc": "a negative label", "target_desc": "a positive label", "unrelated": "winter"}
+{"pair_id": "p026", "source": "allowed", "target": "forbidden", "source_desc": "something permitted", "target_desc": "something prohibited", "unrelated": "teacher"}
+{"pair_id": "p027", "source": "forbidden", "target": "allowed", "source_desc": "something prohibited", "target_desc": "something permitted", "unrelated": "student"}
+{"pair_id": "p028", "source": "safe", "target": "dangerous", "source_desc": "unlikely to cause harm", "target_desc": "likely to cause harm", "unrelated": "apple"}
+{"pair_id": "p029", "source": "dangerous", "target": "safe", "source_desc": "likely to cause harm", "target_desc": "unlikely to cause harm", "unrelated": "banana"}
+{"pair_id": "p030", "source": "honest", "target": "deceptive", "source_desc": "truthful and sincere", "target_desc": "misleading or false", "unrelated": "car"}
+{"pair_id": "p031", "source": "deceptive", "target": "honest", "source_desc": "misleading or false", "target_desc": "truthful and sincere", "unrelated": "bicycle"}
+{"pair_id": "p032", "source": "public", "target": "private", "source_desc": "open to everyone", "target_desc": "restricted to a few people", "unrelated": "red"}
+{"pair_id": "p033", "source": "private", "target": "public", "source_desc": "restricted to a few people", "target_desc": "open to everyone", "unrelated": "blue"}
+{"pair_id": "p034", "source": "fictional", "target": "real", "source_desc": "invented or imaginary", "target_desc": "actually existing", "unrelated": "hot"}
+{"pair_id": "p035", "source": "real", "target": "fictional", "source_desc": "actually existing", "target_desc": "invented or imaginary", "unrelated": "cold"}
+{"pair_id": "p036", "source": "open", "target": "closed", "source_desc": "not shut", "target_desc": "shut or blocked", "unrelated": "lawyer"}
+{"pair_id": "p037", "source": "closed", "target": "open", "source_desc": "shut or blocked", "target_desc": "not shut", "unrelated": "doctor"}
+{"pair_id": "p038", "source": "north", "target": "south", "source_desc": "toward the north", "target_desc": "toward the south", "unrelated": "king"}
+{"pair_id": "p039", "source": "south", "target": "north", "source_desc": "toward the south", "target_desc": "toward the north", "unrelated": "queen"}
+{"pair_id": "p040", "source": "up", "target": "down", "source_desc": "toward a higher place", "target_desc": "toward a lower place", "unrelated": "yes"}
+{"pair_id": "p041", "source": "down", "target": "up", "source_desc": "toward a lower place", "target_desc": "toward a higher place", "unrelated": "no"}
+{"pair_id": "p042", "source": "start", "target": "finish", "source_desc": "the beginning", "target_desc": "the end", "unrelated": "private"}
+{"pair_id": "p043", "source": "finish", "target": "start", "source_desc": "the end", "target_desc": "the beginning", "unrelated": "public"}
+{"pair_id": "p044", "source": "increase", "target": "decrease", "source_desc": "to become larger", "target_desc": "to become smaller", "unrelated": "safe"}
+{"pair_id": "p045", "source": "decrease", "target": "increase", "source_desc": "to become smaller", "target_desc": "to become larger", "unrelated": "dangerous"}
+{"pair_id": "p046", "source": "accept", "target": "reject", "source_desc": "to agree to receive", "target_desc": "to refuse to receive", "unrelated": "fictional"}
+{"pair_id": "p047", "source": "reject", "target": "accept", "source_desc": "to refuse to receive", "target_desc": "to agree to receive", "unrelated": "real"}
+{"pair_id": "p048", "source": "buy", "target": "sell", "source_desc": "to purchase", "target_desc": "to transfer for payment", "unrelated": "north"}
+{"pair_id": "p049", "source": "sell", "target": "buy", "source_desc": "to transfer for payment", "target_desc": "to purchase", "unrelated": "south"}
+{"pair_id": "p050", "source": "push", "target": "pull", "source_desc": "to exert force away", "target_desc": "to exert force toward oneself", "unrelated": "open"}
+{"pair_id": "p051", "source": "pull", "target": "push", "source_desc": "to exert force toward oneself", "target_desc": "to exert force away", "unrelated": "closed"}
+{"pair_id": "p052", "source": "cause", "target": "effect", "source_desc": "something that produces a result", "target_desc": "the result produced", "unrelated": "up"}
+{"pair_id": "p053", "source": "effect", "target": "cause", "source_desc": "the result produced", "target_desc": "something that produces a result", "unrelated": "down"}
+{"pair_id": "p054", "source": "question", "target": "answer", "source_desc": "a request for information", "target_desc": "a response to a request", "unrelated": "start"}
+{"pair_id": "p055", "source": "answer", "target": "question", "source_desc": "a response to a request", "target_desc": "a request for information", "unrelated": "finish"}
+{"pair_id": "p056", "source": "input", "target": "output", "source_desc": "information given to a system", "target_desc": "information produced by a system", "unrelated": "increase"}
+{"pair_id": "p057", "source": "output", "target": "input", "source_desc": "information produced by a system", "target_desc": "information given to a system", "unrelated": "decrease"}
+{"pair_id": "p058", "source": "client", "target": "server", "source_desc": "a requester of service", "target_desc": "a provider of service", "unrelated": "accept"}
+{"pair_id": "p059", "source": "server", "target": "client", "source_desc": "a provider of service", "target_desc": "a requester of service", "unrelated": "reject"}
+{"pair_id": "p060", "source": "parent", "target": "child", "source_desc": "an ancestor in a family", "target_desc": "a descendant in a family", "unrelated": "buy"}
+{"pair_id": "p061", "source": "child", "target": "parent", "source_desc": "a descendant in a family", "target_desc": "an ancestor in a family", "unrelated": "sell"}
+{"pair_id": "p062", "source": "author", "target": "reader", "source_desc": "a person who writes", "target_desc": "a person who reads", "unrelated": "push"}
+{"pair_id": "p063", "source": "reader", "target": "author", "source_desc": "a person who reads", "target_desc": "a person who writes", "unrelated": "pull"}
+{"pair_id": "p064", "source": "leader", "target": "follower", "source_desc": "one who guides", "target_desc": "one who follows", "unrelated": "cause"}
+{"pair_id": "p065", "source": "follower", "target": "leader", "source_desc": "one who follows", "target_desc": "one who guides", "unrelated": "effect"}
+{"pair_id": "p066", "source": "winner", "target": "loser", "source_desc": "one who wins", "target_desc": "one who loses", "unrelated": "question"}
+{"pair_id": "p067", "source": "loser", "target": "winner", "source_desc": "one who loses", "target_desc": "one who wins", "unrelated": "answer"}
+{"pair_id": "p068", "source": "truth", "target": "lie", "source_desc": "a true statement", "target_desc": "a false statement", "unrelated": "input"}
+{"pair_id": "p069", "source": "lie", "target": "truth", "source_desc": "a false statement", "target_desc": "a true statement", "unrelated": "output"}
+{"pair_id": "p070", "source": "majority", "target": "minority", "source_desc": "the larger part", "target_desc": "the smaller part", "unrelated": "client"}
+{"pair_id": "p071", "source": "minority", "target": "majority", "source_desc": "the smaller part", "target_desc": "the larger part", "unrelated": "server"}
+{"pair_id": "p072", "source": "past", "target": "future", "source_desc": "time before now", "target_desc": "time after now", "unrelated": "parent"}
+{"pair_id": "p073", "source": "future", "target": "past", "source_desc": "time after now", "target_desc": "time before now", "unrelated": "child"}
+{"pair_id": "p074", "source": "urban", "target": "rural", "source_desc": "related to a city", "target_desc": "related to the countryside", "unrelated": "author"}
+{"pair_id": "p075", "source": "rural", "target": "urban", "source_desc": "related to the countryside", "target_desc": "related to a city", "unrelated": "reader"}
+{"pair_id": "p076", "source": "manual", "target": "automatic", "source_desc": "done by hand", "target_desc": "done by machine or system", "unrelated": "leader"}
+{"pair_id": "p077", "source": "automatic", "target": "manual", "source_desc": "done by machine or system", "target_desc": "done by hand", "unrelated": "follower"}

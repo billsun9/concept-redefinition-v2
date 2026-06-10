@@ -1,0 +1,30 @@
+run:
+  id: smoke
+  output_dir: results/smoke
+  seed: 13
+model:
+  name: sshleifer/tiny-gpt2
+  device: auto
+  dtype: float32
+  use_chat_template: false
+  trust_remote_code: false
+data:
+  pairs_path: data/concept_pairs.jsonl
+  generated_path: results/smoke/dataset.jsonl
+  max_pairs: 6
+  templates_per_pair: 2
+experiment:
+  layers: all
+  controls: [mapping, mention, negation, identity, reverse, unrelated]
+  n_bootstrap: 100
+  use_centering: true
+probe:
+  test_size: 0.35
+  regularization_C: 0.05
+  n_random_label_controls: 10
+patching:
+  layers: [0, -1]
+  alpha_values: [-1.0, -0.5, 0.0, 0.5, 1.0]
+  direction_source: train_mean_delta
+  controls: [true_delta, wrong_pair_delta, random_delta, source_replace]
+  max_examples: 24

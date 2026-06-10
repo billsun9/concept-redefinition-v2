@@ -1,0 +1,32 @@
+run:
+  id: qwen25_7b_v2
+  output_dir: results/qwen25_7b_v2
+  seed: 13
+model:
+  # Good A6000 default. Change to another decoder-only HF model if desired.
+  name: Qwen/Qwen2.5-7B-Instruct
+  device: auto
+  dtype: bfloat16
+  use_chat_template: true
+  trust_remote_code: false
+data:
+  pairs_path: data/concept_pairs.jsonl
+  generated_path: results/qwen25_7b_v2/dataset.jsonl
+  max_pairs: 80
+  templates_per_pair: 6
+experiment:
+  # Use selected layers for speed. Set to all for final runs.
+  layers: [3, 7, 11, 15, 19, 23, 27]
+  controls: [mapping, mention, negation, identity, reverse, unrelated]
+  n_bootstrap: 1000
+  use_centering: true
+probe:
+  test_size: 0.35
+  regularization_C: 0.02
+  n_random_label_controls: 50
+patching:
+  layers: [7, 15, 23]
+  alpha_values: [-1.0, -0.5, 0.0, 0.5, 1.0]
+  direction_source: train_mean_delta
+  controls: [true_delta, wrong_pair_delta, random_delta, source_replace]
+  max_examples: 200

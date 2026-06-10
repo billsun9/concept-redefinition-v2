@@ -21,6 +21,11 @@ def load_yaml(path: str | Path) -> Dict[str, Any]:
         return yaml.safe_load(f)
 
 
+def load_json(path: str | Path) -> Dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def ensure_dir(path: str | Path) -> Path:
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)
@@ -133,8 +138,14 @@ def maybe_chat_format(tok, text: str, use_chat_template: bool) -> str:
     return text
 
 
-def token_char_span(tok, text: str, char_start: int, char_end: int) -> List[int]:
-    enc = tok(text, return_offsets_mapping=True, add_special_tokens=True)
+def token_char_span(
+    tok,
+    text: str,
+    char_start: int,
+    char_end: int,
+    add_special_tokens: bool = True,
+) -> List[int]:
+    enc = tok(text, return_offsets_mapping=True, add_special_tokens=add_special_tokens)
     offsets = enc["offset_mapping"]
     idxs = []
     for i, (s, e) in enumerate(offsets):
@@ -155,6 +166,23 @@ def final_occurrence_span(text: str, needle: str) -> Tuple[int, int]:
     return i, i + len(needle)
 
 
+def map_prompt_span_to_formatted(
+    raw_prompt: str,
+    formatted_prompt: str,
+    raw_start: int,
+    raw_end: int,
+) -> Tuple[int, int]:
+    if raw_start < 0 or raw_end <= raw_start or raw_end > len(raw_prompt):
+        raise ValueError(f"Invalid raw prompt span: {raw_start}:{raw_end}")
+    if raw_prompt == formatted_prompt:
+        offset = 0
+    else:
+        offset = formatted_prompt.find(raw_prompt)
+        if offset < 0:
+            raise ValueError("Chat-formatted prompt does not contain the raw prompt verbatim")
+    return offset + raw_start, offset + raw_end
+
+
 def label_token_ids(tok, labels=("A", "B")) -> Dict[str, List[int]]:
     # Try variants because tokenizers differ; choose the shortest encoding.
     out = {}
@@ -170,9 +198,20 @@ def label_token_ids(tok, labels=("A", "B")) -> Dict[str, List[int]]:
 
 
 @torch.no_grad()
-def continuation_logprob(model, tok, prompt: str, continuation: str, device: str) -> float:
+def continuation_logprob(
+    model,
+    tok,
+    prompt: str,
+    continuation: str,
+    device: str,
+    add_special_tokens: bool = True,
+) -> float:
     # Total sequence log-probability for exact continuation. Suitable when continuations are same-token labels.
-    p_ids = tok(prompt, return_tensors="pt", add_special_tokens=True).input_ids.to(device)
+    p_ids = tok(
+        prompt,
+        return_tensors="pt",
+        add_special_tokens=add_special_tokens,
+    ).input_ids.to(device)
     c_ids = tok(continuation, return_tensors="pt", add_special_tokens=False).input_ids.to(device)
     input_ids = torch.cat([p_ids, c_ids], dim=1)
     logits = model(input_ids).logits
@@ -200,7 +239,15 @@ def replace_hidden_in_output(output, new_hidden):
 
 
 @torch.no_grad()
-def collect_layer_token_means(model, tok, text: str, token_indices: List[int], layers: List[int], device: str) -> Dict[int, np.ndarray]:
+def collect_layer_token_means(
+    model,
+    tok,
+    text: str,
+    token_indices: List[int],
+    layers: List[int],
+    device: str,
+    add_special_tokens: bool = True,
+) -> Dict[int, np.ndarray]:
     _, layer_stack = model_layers(model)
     captured: Dict[int, torch.Tensor] = {}
     handles = []
@@ -213,7 +260,11 @@ def collect_layer_token_means(model, tok, text: str, token_indices: List[int], l
     for li in layers:
         handles.append(layer_stack[li].register_forward_hook(make_hook(li)))
     try:
-        enc = tok(text, return_tensors="pt", add_special_tokens=True).to(device)
+        enc = tok(
+            text,
+            return_tensors="pt",
+            add_special_tokens=add_special_tokens,
+        ).to(device)
         _ = model(**enc)
     finally:
         for h in handles:
@@ -236,6 +287,7 @@ def score_with_patch(
     alpha: float,
     mode: str,
     device: str,
+    add_special_tokens: bool = True,
 ) -> float:
     _, layer_stack = model_layers(model)
     patch_vector = patch_vector.to(device=device)
@@ -253,7 +305,14 @@ def score_with_patch(
         return replace_hidden_in_output(out, new_h)
     handle = layer_stack[patch_layer].register_forward_hook(hook)
     try:
-        return continuation_logprob(model, tok, prompt, continuation, device)
+        return continuation_logprob(
+            model,
+            tok,
+            prompt,
+            continuation,
+            device,
+            add_special_tokens=add_special_tokens,
+        )
     finally:
         handle.remove()
 
@@ -287,6 +346,71 @@ def run_metadata(cfg: Dict[str, Any], dataset_path: str | Path) -> Dict[str, Any
         "cuda_available": torch.cuda.is_available(),
         "cuda_device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
     }
+
+
+def validate_run_artifact(
+    cfg: Dict[str, Any],
+    dataset_path: str | Path,
+    metadata_path: str | Path,
+) -> None:
+    metadata_path = Path(metadata_path)
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"Missing artifact metadata: {metadata_path}. Re-run activation collection."
+        )
+    saved = load_json(metadata_path)
+    current = run_metadata(cfg, dataset_path)
+    keys = [
+        "run_id",
+        "model_name",
+        "model_revision",
+        "use_chat_template",
+        "dataset_sha256",
+    ]
+    mismatches = {
+        key: {"saved": saved.get(key), "current": current.get(key)}
+        for key in keys
+        if saved.get(key) != current.get(key)
+    }
+    if mismatches:
+        details = "; ".join(
+            f"{key}: saved={value['saved']!r}, current={value['current']!r}"
+            for key, value in mismatches.items()
+        )
+        raise RuntimeError(
+            f"Activation artifacts are incompatible with the current run ({details}). "
+            "Re-run activation collection."
+        )
+
+
+def validate_activation_artifacts(
+    cfg: Dict[str, Any],
+    output_dir: str | Path,
+    activations: np.ndarray,
+    metadata: List[Dict[str, Any]],
+) -> None:
+    output_dir = Path(output_dir)
+    validate_run_artifact(
+        cfg,
+        cfg["data"]["generated_path"],
+        output_dir / "run_meta_activations.json",
+    )
+    if activations.ndim != 3:
+        raise RuntimeError(
+            f"Expected activations with shape [rows, layers, hidden], got {activations.shape}"
+        )
+    if activations.shape[0] != len(metadata):
+        raise RuntimeError(
+            f"Activation row count {activations.shape[0]} does not match metadata row count {len(metadata)}"
+        )
+    dataset_rows = read_jsonl(cfg["data"]["generated_path"])
+    dataset_ids = [row.get("example_id") for row in dataset_rows]
+    metadata_ids = [row.get("example_id") for row in metadata]
+    if dataset_ids != metadata_ids:
+        raise RuntimeError(
+            "Activation metadata rows do not match the current generated dataset. "
+            "Re-run activation collection."
+        )
 
 
 def save_json(path: str | Path, obj: Any) -> None:

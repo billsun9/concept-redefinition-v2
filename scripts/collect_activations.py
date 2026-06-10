@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 from redef.utils import (load_yaml, read_jsonl, write_jsonl, ensure_dir, load_model_and_tokenizer,
-                         maybe_chat_format, final_occurrence_span, token_char_span, collect_layer_token_means,
-                         select_layers, model_layers, save_json, run_metadata)
+                         maybe_chat_format, map_prompt_span_to_formatted, token_char_span,
+                         collect_layer_token_means, select_layers, model_layers, save_json, run_metadata)
 
 
 def main():
@@ -20,14 +20,33 @@ def main():
     layer_prefix, layer_stack = model_layers(model)
     layers = select_layers(model, cfg["experiment"].get("layers", "all"))
     use_chat = cfg["model"].get("use_chat_template", False)
+    add_special_tokens = not use_chat
     metas = []
     acts = []
     for r in tqdm(rows, desc="activations"):
         text = maybe_chat_format(tok, r["prompt"], use_chat)
-        # Align to the final occurrence of the query word, which appears in the explicit Question line.
-        start, end = final_occurrence_span(text, r["query_word"])
-        idxs = token_char_span(tok, text, start, end)
-        adict = collect_layer_token_means(model, tok, text, idxs, layers, device)
+        start, end = map_prompt_span_to_formatted(
+            r["prompt"],
+            text,
+            int(r["query_char_start"]),
+            int(r["query_char_end"]),
+        )
+        idxs = token_char_span(
+            tok,
+            text,
+            start,
+            end,
+            add_special_tokens=add_special_tokens,
+        )
+        adict = collect_layer_token_means(
+            model,
+            tok,
+            text,
+            idxs,
+            layers,
+            device,
+            add_special_tokens=add_special_tokens,
+        )
         mat = np.stack([adict[li] for li in layers], axis=0).astype("float32")
         acts.append(mat)
         metas.append({k: r[k] for k in r if k != "prompt"} | {

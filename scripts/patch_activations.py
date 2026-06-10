@@ -8,7 +8,8 @@ import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from redef.utils import (load_yaml, read_jsonl, ensure_dir, load_model_and_tokenizer, maybe_chat_format,
-                         select_layers, continuation_logprob, score_with_patch, save_json, run_metadata)
+                         select_layers, continuation_logprob, score_with_patch, save_json, run_metadata,
+                         validate_activation_artifacts)
 
 
 def sigmoid(x):
@@ -41,6 +42,7 @@ def main():
     acts = data["activations"]
     collected_layers = data["layers"].tolist()
     meta = pd.DataFrame(read_jsonl(out_dir / "activation_meta.jsonl")).reset_index().rename(columns={"index":"row_idx"})
+    validate_activation_artifacts(cfg, out_dir, acts, meta.to_dict("records"))
     model, tok, device = load_model_and_tokenizer(cfg)
     patch_layers = select_layers(model, cfg["patching"].get("layers", collected_layers))
     patch_layers = [l for l in patch_layers if l in collected_layers]
@@ -48,6 +50,7 @@ def main():
     alphas = [float(a) for a in cfg["patching"].get("alpha_values", [-1, -0.5, 0, 0.5, 1])]
     max_examples = int(cfg["patching"].get("max_examples", 200))
     use_chat = cfg["model"].get("use_chat_template", False)
+    add_special_tokens = not use_chat
 
     # Candidate rows: held-out templates in mapping condition. This avoids deriving and testing on same prompt.
     rows = meta[(meta.condition == "mapping") & (meta.template_split == "test_template")].copy()
@@ -66,8 +69,12 @@ def main():
             cont_target = " " + r.target_label
             cont_source = " " + r.source_label
             # unpatched
-            base_t = continuation_logprob(model, tok, prompt, cont_target, device)
-            base_s = continuation_logprob(model, tok, prompt, cont_source, device)
+            base_t = continuation_logprob(
+                model, tok, prompt, cont_target, device, add_special_tokens=add_special_tokens
+            )
+            base_s = continuation_logprob(
+                model, tok, prompt, cont_source, device, add_special_tokens=add_special_tokens
+            )
             query_idxs = list(r.query_token_indices)
             true_delta = torch.tensor(deltas[r.pair_id], dtype=torch.float32)
             # wrong-pair with similar norm if possible
@@ -103,8 +110,14 @@ def main():
                     continue
                 alpha_list = [alpha_marker] if alpha_marker is not None else alphas
                 for alpha in alpha_list:
-                    lt = score_with_patch(model, tok, prompt, cont_target, int(layer), query_idxs, vec, float(alpha), mode, device)
-                    ls = score_with_patch(model, tok, prompt, cont_source, int(layer), query_idxs, vec, float(alpha), mode, device)
+                    lt = score_with_patch(
+                        model, tok, prompt, cont_target, int(layer), query_idxs, vec,
+                        float(alpha), mode, device, add_special_tokens=add_special_tokens
+                    )
+                    ls = score_with_patch(
+                        model, tok, prompt, cont_source, int(layer), query_idxs, vec,
+                        float(alpha), mode, device, add_special_tokens=add_special_tokens
+                    )
                     records.append({"example_id": r.example_id, "pair_id": r.pair_id, "template_id": r.template_id,
                                     "layer": int(layer), "intervention": name, "alpha": float(alpha), "donor_pair": donor,
                                     "lp_target": lt, "lp_source": ls,

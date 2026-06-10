@@ -8,7 +8,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import roc_auc_score
-from redef.utils import load_yaml, read_jsonl, ensure_dir, set_seed
+from redef.utils import (
+    load_yaml,
+    read_jsonl,
+    ensure_dir,
+    set_seed,
+    validate_activation_artifacts,
+)
 
 
 def fit_probe(X, y, C):
@@ -29,7 +35,9 @@ def main():
     data = np.load(out_dir / "activations.npz", allow_pickle=True)
     acts = data["activations"]
     layers = data["layers"].tolist()
-    meta = pd.DataFrame(read_jsonl(out_dir / "activation_meta.jsonl")).reset_index().rename(columns={"index":"row_idx"})
+    activation_meta = read_jsonl(out_dir / "activation_meta.jsonl")
+    validate_activation_artifacts(cfg, out_dir, acts, activation_meta)
+    meta = pd.DataFrame(activation_meta).reset_index().rename(columns={"index":"row_idx"})
     C = float(cfg["probe"].get("regularization_C", 0.05))
     n_rand = int(cfg["probe"].get("n_random_label_controls", 20))
     rng = random.Random(cfg["run"].get("seed", 0))

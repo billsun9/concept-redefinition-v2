@@ -54,6 +54,15 @@ def build_prompt(carrier, sentence, query_word, option_a, option_b):
     )
 
 
+def query_span_in_prompt(prompt, query_word):
+    question_start = prompt.index("Question:")
+    options_start = prompt.index("\nA.", question_start)
+    quoted_query = f"'{query_word}'"
+    quoted_start = prompt.index(quoted_query, question_start, options_start)
+    start = quoted_start + 1
+    return start, start + len(query_word)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
@@ -92,6 +101,7 @@ def main():
                     target_label, source_label = "B", "A"
                 sent = control_sentence(kind, s, t, u)
                 prompt = build_prompt(carrier, sent, q, option_a, option_b)
+                query_char_start, query_char_end = query_span_in_prompt(prompt, q)
                 rows.append({
                     "example_id": f"{p['pair_id']}_t{ti}_{kind}",
                     "pair_id": p["pair_id"],
@@ -110,6 +120,8 @@ def main():
                     "source_label": source_label,
                     "correct_label": correct,
                     "prompt": prompt,
+                    "query_char_start": query_char_start,
+                    "query_char_end": query_char_end,
                     "target_is_correct": correct_target,
                 })
     write_jsonl(out_path, rows)

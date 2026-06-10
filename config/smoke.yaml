@@ -12,7 +12,7 @@ data:
   pairs_path: data/concept_pairs.jsonl
   generated_path: results/smoke/dataset.jsonl
   max_pairs: 6
-  templates_per_pair: 2
+  templates_per_pair: 3
 experiment:
   layers: all
   controls: [mapping, mention, negation, identity, reverse, unrelated]

@@ -21,12 +21,17 @@ def main():
     rows = read_jsonl(cfg["data"]["generated_path"])
     model, tok, device = load_model_and_tokenizer(cfg)
     use_chat = cfg["model"].get("use_chat_template", False)
+    add_special_tokens = not use_chat
     records = []
     for r in tqdm(rows, desc="behavior"):
         prompt = maybe_chat_format(tok, r["prompt"], use_chat)
         # Forced-choice labels are intentionally same length semantically; score exact label continuations.
-        lp_a = continuation_logprob(model, tok, prompt, " A", device)
-        lp_b = continuation_logprob(model, tok, prompt, " B", device)
+        lp_a = continuation_logprob(
+            model, tok, prompt, " A", device, add_special_tokens=add_special_tokens
+        )
+        lp_b = continuation_logprob(
+            model, tok, prompt, " B", device, add_special_tokens=add_special_tokens
+        )
         lp_target = lp_a if r["target_label"] == "A" else lp_b
         lp_source = lp_a if r["source_label"] == "A" else lp_b
         target_pref = lp_target - lp_source

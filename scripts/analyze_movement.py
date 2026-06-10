@@ -4,7 +4,13 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from redef.utils import load_yaml, read_jsonl, cosine, ensure_dir
+from redef.utils import (
+    load_yaml,
+    read_jsonl,
+    cosine,
+    ensure_dir,
+    validate_activation_artifacts,
+)
 
 
 def main():
@@ -17,6 +23,7 @@ def main():
     acts = data["activations"]  # [N,L,D]
     layers = data["layers"].tolist()
     meta = read_jsonl(out_dir / "activation_meta.jsonl")
+    validate_activation_artifacts(cfg, out_dir, acts, meta)
     df = pd.DataFrame(meta).reset_index().rename(columns={"index": "row_idx"})
     use_centering = bool(cfg["experiment"].get("use_centering", True))
     centered = acts.copy()

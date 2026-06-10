@@ -4,7 +4,13 @@ import argparse, json
 import numpy as np
 import pandas as pd
 import torch
-from redef.utils import load_yaml, read_jsonl, ensure_dir, load_model_and_tokenizer, select_layers
+from redef.utils import (
+    load_yaml,
+    read_jsonl,
+    ensure_dir,
+    load_model_and_tokenizer,
+    validate_activation_artifacts,
+)
 
 
 def top_tokens(tok, scores, k):
@@ -22,7 +28,9 @@ def main():
     data = np.load(out_dir / "activations.npz", allow_pickle=True)
     acts = data["activations"]
     layers = data["layers"].tolist()
-    meta = pd.DataFrame(read_jsonl(out_dir / "activation_meta.jsonl")).reset_index().rename(columns={"index":"row_idx"})
+    activation_meta = read_jsonl(out_dir / "activation_meta.jsonl")
+    validate_activation_artifacts(cfg, out_dir, acts, activation_meta)
+    meta = pd.DataFrame(activation_meta).reset_index().rename(columns={"index":"row_idx"})
     model, tok, device = load_model_and_tokenizer(cfg)
     emb = model.get_input_embeddings().weight.detach().float().cpu().numpy()
     # Use LM head when available; for tied embeddings this is equivalent up to final norm/interface caveats.

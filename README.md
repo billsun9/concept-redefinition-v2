@@ -153,7 +153,9 @@ activation_meta.jsonl
 
 Activations are captured with decoder-block forward hooks. Phase 4 patching uses the same hook interface, avoiding the final-hidden-state / block-output mismatch.
 
-The activation is the mean over tokens corresponding to the final queried word in the `Question:` line.
+Dataset construction records the exact character span of the queried word in the `Question:` line. Activation collection maps that span through any chat-template wrapper before token alignment, so repeated words in answer options cannot redirect collection to the wrong token.
+
+Downstream activation analyses validate the dataset hash, model identity, chat-template setting, row order, and row count before reusing saved artifacts.
 
 ### 4. Layerwise movement analysis
 
@@ -299,6 +301,6 @@ A weak or null result is also informative. For example, if `mention` and `mappin
 
 - Pair-specific probes can still decode lexical identity. Do not overclaim from probes alone.
 - Whole-block patching can create off-distribution states. Interpret only relative to random/wrong-pair controls.
-- The query-token span is the final occurrence of the queried word in the prompt. This is simple and auditable but not the only possible choice.
+- The activation is the mean over the token span corresponding to the explicitly recorded queried word in the `Question:` line.
 - Instruct models should use their chat template; base models should not.
 - `vocab_effects.py` is qualitative.

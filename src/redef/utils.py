@@ -79,6 +79,7 @@ def get_device(device: str) -> str:
 
 def load_model_and_tokenizer(cfg: Dict[str, Any]):
     model_name = cfg["model"]["name"]
+    cache_dir = cfg["model"].get("cache_dir")
     device = get_device(cfg["model"].get("device", "auto"))
     dtype_name = cfg["model"].get("dtype", "auto")
     if dtype_name == "float16":
@@ -89,11 +90,17 @@ def load_model_and_tokenizer(cfg: Dict[str, Any]):
         dtype = torch.float32
     else:
         dtype = "auto"
-    tok = AutoTokenizer.from_pretrained(model_name, use_fast=True, trust_remote_code=cfg["model"].get("trust_remote_code", False))
+    tok = AutoTokenizer.from_pretrained(
+        model_name,
+        cache_dir=cache_dir,
+        use_fast=True,
+        trust_remote_code=cfg["model"].get("trust_remote_code", False),
+    )
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
+        cache_dir=cache_dir,
         torch_dtype=dtype,
         trust_remote_code=cfg["model"].get("trust_remote_code", False),
         low_cpu_mem_usage=True,

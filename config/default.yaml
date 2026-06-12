@@ -5,6 +5,8 @@ run:
 model:
   # Good A6000 default. Change to another decoder-only HF model if desired.
   name: Qwen/Qwen2.5-7B-Instruct
+  # null uses the standard Hugging Face cache. Set a path to override it.
+  cache_dir: null
   device: auto
   dtype: bfloat16
   use_chat_template: true

@@ -58,26 +58,53 @@ By default, both large intermediates and small reports use this directory.
 
 ---
 
-## A6000 run
+## Run profiles
+
+Three explicit configurations are provided:
+
+| Profile | Config | Model | Run ID |
+| --- | --- | --- | --- |
+| `smoke` | `config/smoke.yaml` | `sshleifer/tiny-gpt2` | `smoke` |
+| `base` | `config/qwen_base.yaml` | `Qwen/Qwen2.5-7B` | `qwen25_7b_base_v2` |
+| `instruct` | `config/qwen_instruct.yaml` | `Qwen/Qwen2.5-7B-Instruct` | `qwen25_7b_instruct_v2` |
+
+`run.id` is an experiment identifier and output namespace. It is recorded in
+metadata and is normally used as the final artifact/report directory name. It
+does not select or load the model; `model.name` does that.
+
+Run a profile directly:
+
+```bash
+bash scripts/run_all.sh config/smoke.yaml
+bash scripts/run_all.sh config/qwen_base.yaml
+bash scripts/run_all.sh config/qwen_instruct.yaml
+```
+
+`config/default.yaml` remains the Qwen 2.5 7B Instruct default for backwards
+compatibility.
+
+---
+
+## A6000 runs
 
 The default config uses Qwen 2.5 7B Instruct with the model chat template:
 
 ```bash
-bash scripts/run_all.sh config/default.yaml
+bash scripts/run_all.sh config/qwen_instruct.yaml
 ```
 
 Outputs go to:
 
 ```text
-results/qwen25_7b_v2/
+results/qwen25_7b_instruct_v2/
 ```
 
 The output roots are configured separately:
 
 ```yaml
 run:
-  artifact_dir: results/qwen25_7b_v2
-  report_dir: results/qwen25_7b_v2
+  artifact_dir: results/qwen25_7b_instruct_v2
+  report_dir: results/qwen25_7b_instruct_v2
 ```
 
 - `artifact_dir` stores the generated dataset, activation metadata, and
@@ -88,8 +115,8 @@ run:
 Environment variables override the YAML paths:
 
 ```bash
-export REDEF_ARTIFACT_DIR=/pmglocal/bys2107/research/concept-redefinition-v2/artifacts/qwen25_7b_v2
-export REDEF_REPORT_DIR=/insomnia001/home/bys2107/research/concept-redefinition-v2/visualizations/qwen25_7b_v2
+export REDEF_ARTIFACT_DIR=/pmglocal/bys2107/research/concept-redefinition-v2/artifacts/qwen25_7b_instruct_v2
+export REDEF_REPORT_DIR=/insomnia001/home/bys2107/research/concept-redefinition-v2/visualizations/qwen25_7b_instruct_v2
 export REDEF_HF_CACHE_DIR=/pmglocal/bys2107/research/huggingface
 ```
 
@@ -106,8 +133,19 @@ user- and cluster-specific. The included local template:
 3. keeps model, Torch, generic, and temporary caches under `/pmglocal`;
 4. writes CSVs, JSON diagnostics, metadata, and plots back to
    `visualizations/<run-id>/` in the home checkout;
-5. runs `bash scripts/run_all.sh config/default.yaml` from the copied work
-   checkout.
+5. selects a tracked config and matching output namespace from one argument.
+
+Use the helper as:
+
+```bash
+./copy_helper.sh smoke
+./copy_helper.sh base
+./copy_helper.sh instruct
+```
+
+With no argument, it runs `smoke`. The selected profile controls the config
+file, and the helper reads `RUN_ID` from `run.id` in that YAML. This prevents
+smoke, base, and instruct outputs from sharing a directory.
 
 You can change the model in `config/default.yaml`. Good alternatives:
 

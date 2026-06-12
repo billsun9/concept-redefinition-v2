@@ -151,6 +151,30 @@ With no argument, it runs `smoke`. The selected profile controls the config
 file, and the helper reads `RUN_ID` from `run.id` in that YAML. This prevents
 smoke, base, and instruct outputs from sharing a directory.
 
+### Analyze existing reports from home storage
+
+Report analysis does not load a model or need access to `/pmglocal`. From the
+home repository:
+
+```bash
+cd /insomnia001/home/bys2107/research/concept-redefinition-v2
+
+python -u scripts/summarize_reports.py visualizations/smoke
+python -u scripts/summarize_reports.py visualizations/qwen25_7b_base_v2
+python -u scripts/summarize_reports.py visualizations/qwen25_7b_instruct_v2
+```
+
+The script reads whichever report CSVs are present and prints:
+
+- behavioral condition means and mapping-control gaps;
+- calibrated behavioral scores;
+- held-out movement projection gaps and best layers;
+- probe selectivity, held-out baseline AUC, and random-label baselines;
+- paired patching effects relative to each example's unpatched score.
+
+It also writes `analysis_summary.txt` into the selected visualization
+directory. No change to `copy_helper.sh` is required for report-only analysis.
+
 You can change the model in `config/default.yaml`. Good alternatives:
 
 ```yaml

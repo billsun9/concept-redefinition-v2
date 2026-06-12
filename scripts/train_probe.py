@@ -21,7 +21,7 @@ from redef.utils import (
 def fit_probe(X, y, C):
     # Small n, large d: strong L2 regularization is intentional.
     clf = make_pipeline(StandardScaler(with_mean=True, with_std=True),
-                        LogisticRegression(C=C, penalty="l2", solver="liblinear", max_iter=2000))
+                        LogisticRegression(C=C, solver="liblinear", max_iter=2000))
     clf.fit(X, y)
     return clf
 

@@ -5,7 +5,8 @@ run:
   seed: 13
 model:
   name: sshleifer/tiny-gpt2
-  device: auto
+  # Smoke is a pipeline check and intentionally avoids CUDA initialization.
+  device: cpu
   dtype: float32
   use_chat_template: false
   trust_remote_code: false

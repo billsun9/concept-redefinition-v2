@@ -1,8 +1,10 @@
 from transformers import AutoTokenizer
+import transformers
 from redef.utils import (
     final_occurrence_span,
     load_yaml,
     map_prompt_span_to_formatted,
+    model_dtype_kwargs,
     token_char_span,
 )
 
@@ -50,3 +52,11 @@ data:
     assert cfg["run"]["report_dir"] == "/home/reports/test"
     assert cfg["data"]["generated_path"] == "/work/artifacts/test/dataset.jsonl"
     assert cfg["model"]["cache_dir"] == "/work/huggingface"
+
+
+def test_model_dtype_keyword_tracks_transformers_major_version(monkeypatch):
+    monkeypatch.setattr(transformers, "__version__", "4.57.6")
+    assert model_dtype_kwargs("auto") == {"torch_dtype": "auto"}
+
+    monkeypatch.setattr(transformers, "__version__", "5.0.0")
+    assert model_dtype_kwargs("auto") == {"dtype": "auto"}

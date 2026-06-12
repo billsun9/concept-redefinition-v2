@@ -42,7 +42,11 @@ The tests require downloading `sshleifer/tiny-gpt2` once from Hugging Face.
 
 ## Smoke test
 
-This uses a tiny GPT-2 model and should run on CPU/GPU. The results are not scientifically meaningful; the purpose is to verify the pipeline.
+This uses a tiny GPT-2 model on CPU. The results are not scientifically
+meaningful; the purpose is to verify the pipeline.
+
+The smoke config explicitly uses CPU so it also works on nodes whose installed
+PyTorch build is incompatible with the available NVIDIA driver.
 
 ```bash
 bash scripts/run_all.sh config/smoke.yaml

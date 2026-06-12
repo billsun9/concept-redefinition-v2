@@ -12,6 +12,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import torch
+import transformers
 import yaml
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -111,6 +112,13 @@ def get_device(device: str) -> str:
     return device
 
 
+def model_dtype_kwargs(dtype) -> Dict[str, Any]:
+    major_version = int(transformers.__version__.split(".", 1)[0])
+    if major_version >= 5:
+        return {"dtype": dtype}
+    return {"torch_dtype": dtype}
+
+
 def load_model_and_tokenizer(cfg: Dict[str, Any]):
     model_name = cfg["model"]["name"]
     cache_dir = cfg["model"].get("cache_dir")
@@ -135,9 +143,9 @@ def load_model_and_tokenizer(cfg: Dict[str, Any]):
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         cache_dir=cache_dir,
-        torch_dtype=dtype,
         trust_remote_code=cfg["model"].get("trust_remote_code", False),
         low_cpu_mem_usage=True,
+        **model_dtype_kwargs(dtype),
     )
     model.eval()
     model.to(device)
@@ -369,7 +377,11 @@ def center_vectors(x: np.ndarray, mean: Optional[np.ndarray]) -> np.ndarray:
 
 
 def run_metadata(cfg: Dict[str, Any], dataset_path: str | Path) -> Dict[str, Any]:
-    import transformers, sklearn, pandas
+    import sklearn, pandas
+    requested_device = cfg["model"].get("device", "auto")
+    cuda_available = (
+        torch.cuda.is_available() if requested_device != "cpu" else False
+    )
     return {
         "run_id": cfg["run"].get("id", "default"),
         "artifact_dir": cfg["run"]["artifact_dir"],
@@ -387,8 +399,8 @@ def run_metadata(cfg: Dict[str, Any], dataset_path: str | Path) -> Dict[str, Any
         "transformers": transformers.__version__,
         "sklearn": sklearn.__version__,
         "pandas": pandas.__version__,
-        "cuda_available": torch.cuda.is_available(),
-        "cuda_device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+        "cuda_available": cuda_available,
+        "cuda_device": torch.cuda.get_device_name(0) if cuda_available else None,
     }
 
 

@@ -26,6 +26,22 @@ def test_layer_control_gaps_orders_best_layer_first():
     assert result.iloc[0]["mean_control_gap"] == pytest.approx(0.65)
 
 
+def test_layer_control_gaps_keeps_positions_separate():
+    rows = [
+        {"position": "query_source", "layer": 1, "condition": "mapping", "score": 0.6},
+        {"position": "query_source", "layer": 1, "condition": "mention", "score": 0.5},
+        {"position": "final_pre_answer", "layer": 1, "condition": "mapping", "score": 0.9},
+        {"position": "final_pre_answer", "layer": 1, "condition": "mention", "score": 0.1},
+    ]
+    result = layer_control_gaps(
+        pd.DataFrame(rows),
+        "score",
+        controls=["mention"],
+    )
+    assert result.iloc[0]["position"] == "final_pre_answer"
+    assert len(result) == 2
+
+
 def test_paired_patching_effects_uses_matching_unpatched_rows():
     rows = [
         {

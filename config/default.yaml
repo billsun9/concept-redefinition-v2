@@ -16,6 +16,7 @@ model:
   trust_remote_code: false
 data:
   pairs_path: data/concept_pairs.jsonl
+  categories_path: data/concept_categories.json
   max_pairs: 80
   templates_per_pair: 6
 experiment:
@@ -24,10 +25,14 @@ experiment:
   controls: [mapping, mention, negation, identity, reverse, unrelated]
   n_bootstrap: 1000
   use_centering: true
+  activation_positions: [definition_source, definition_target, query_source, final_pre_answer, answer_label]
 probe:
   test_size: 0.35
   regularization_C: 0.02
   n_random_label_controls: 50
+mapping_detector:
+  regularization_C: 0.02
+  n_random_label_controls: 20
 patching:
   layers: [7, 15, 23]
   alpha_values: [-1.0, -0.5, 0.0, 0.5, 1.0]

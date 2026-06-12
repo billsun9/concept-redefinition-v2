@@ -2,7 +2,16 @@
 from __future__ import annotations
 import argparse, random
 from pathlib import Path
-from redef.utils import load_yaml, read_jsonl, write_jsonl, ensure_dir, set_seed, save_json, run_metadata
+from redef.utils import (
+    load_json,
+    load_yaml,
+    read_jsonl,
+    write_jsonl,
+    ensure_dir,
+    set_seed,
+    save_json,
+    run_metadata,
+)
 
 CARRIERS = [
     "Read the note carefully and answer using only the letter of the best option.",
@@ -63,6 +72,21 @@ def query_span_in_prompt(prompt, query_word):
     return start, start + len(query_word)
 
 
+def definition_span_in_prompt(prompt, word):
+    note_start = prompt.index("Note:")
+    note_end = prompt.index("\n\nQuestion:", note_start)
+    quoted = f"'{word}'"
+    quoted_start = prompt.find(quoted, note_start, note_end)
+    if quoted_start < 0:
+        return None
+    start = quoted_start + 1
+    return start, start + len(word)
+
+
+def canonical_pair_key(source, target):
+    return "|".join(sorted([source, target]))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("config")
@@ -73,6 +97,7 @@ def main():
     ensure_dir(out_path.parent)
 
     pairs = read_jsonl(cfg["data"]["pairs_path"])
+    categories = load_json(cfg["data"]["categories_path"])
     max_pairs = cfg["data"].get("max_pairs")
     if max_pairs:
         pairs = pairs[: int(max_pairs)]
@@ -80,9 +105,19 @@ def main():
     n_templates = int(cfg["data"].get("templates_per_pair", len(CARRIERS)))
     carriers = CARRIERS[:n_templates]
     rng = random.Random(cfg["run"].get("seed", 0))
+    pair_groups = {}
     rows = []
     for pi, p in enumerate(pairs):
-        pair_split = "test_pair" if (pi % 5 == 4) else "train_pair"
+        pair_key = canonical_pair_key(p["source"], p["target"])
+        if pair_key not in categories:
+            raise ValueError(f"Missing concept category for pair {pair_key!r}")
+        if pair_key not in pair_groups:
+            pair_groups[pair_key] = len(pair_groups)
+        pair_group_index = pair_groups[pair_key]
+        pair_group_id = f"g{pair_group_index:03d}"
+        pair_split = (
+            "test_pair" if (pair_group_index % 5 == 4) else "train_pair"
+        )
         for ti, carrier in enumerate(carriers):
             template_split = "test_template" if (ti % 3 == 2) else "train_template"
             for kind in controls:
@@ -102,11 +137,15 @@ def main():
                 sent = control_sentence(kind, s, t, u)
                 prompt = build_prompt(carrier, sent, q, option_a, option_b)
                 query_char_start, query_char_end = query_span_in_prompt(prompt, q)
+                definition_source_span = definition_span_in_prompt(prompt, s)
+                definition_target_span = definition_span_in_prompt(prompt, t)
                 rows.append({
                     "example_id": f"{p['pair_id']}_t{ti}_{kind}",
                     "pair_id": p["pair_id"],
                     "pair_index": pi,
+                    "pair_group_id": pair_group_id,
                     "pair_split": pair_split,
+                    "concept_category": categories[pair_key],
                     "template_id": ti,
                     "template_split": template_split,
                     "condition": kind,
@@ -122,6 +161,26 @@ def main():
                     "prompt": prompt,
                     "query_char_start": query_char_start,
                     "query_char_end": query_char_end,
+                    "definition_source_char_start": (
+                        definition_source_span[0]
+                        if definition_source_span is not None
+                        else None
+                    ),
+                    "definition_source_char_end": (
+                        definition_source_span[1]
+                        if definition_source_span is not None
+                        else None
+                    ),
+                    "definition_target_char_start": (
+                        definition_target_span[0]
+                        if definition_target_span is not None
+                        else None
+                    ),
+                    "definition_target_char_end": (
+                        definition_target_span[1]
+                        if definition_target_span is not None
+                        else None
+                    ),
                     "target_is_correct": correct_target,
                 })
     write_jsonl(out_path, rows)

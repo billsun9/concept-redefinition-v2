@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from transformers import AutoTokenizer
 import torch
 import transformers
@@ -52,7 +54,9 @@ data:
 
     assert cfg["run"]["artifact_dir"] == "/work/artifacts/test"
     assert cfg["run"]["report_dir"] == "/home/reports/test"
-    assert cfg["data"]["generated_path"] == "/work/artifacts/test/dataset.jsonl"
+    assert cfg["data"]["generated_path"] == str(
+        Path("/work/artifacts/test") / "dataset.jsonl"
+    )
     assert cfg["model"]["cache_dir"] == "/work/huggingface"
 
 

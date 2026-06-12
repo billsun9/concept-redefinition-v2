@@ -321,31 +321,65 @@ def collect_layer_token_means(
     device: str,
     add_special_tokens: bool = True,
 ) -> Dict[int, np.ndarray]:
+    enc = tok(
+        text,
+        return_tensors="pt",
+        add_special_tokens=add_special_tokens,
+    )
+    captured = collect_layer_position_means(
+        model,
+        enc.input_ids.to(device),
+        {"selected": token_indices},
+        layers,
+    )
+    return {layer: captured["selected"][layer] for layer in layers}
+
+
+@torch.no_grad()
+def collect_layer_position_means(
+    model,
+    input_ids: torch.Tensor,
+    position_token_indices: Dict[str, List[int]],
+    layers: List[int],
+) -> Dict[str, Dict[int, np.ndarray]]:
     _, layer_stack = model_layers(model)
-    captured: Dict[int, torch.Tensor] = {}
+    captured: Dict[str, Dict[int, torch.Tensor]] = {
+        position: {} for position in position_token_indices
+    }
     handles = []
     wanted = set(layers)
+
     def make_hook(layer_idx):
         def hook(module, inp, out):
             h = hidden_from_module_output(out).detach()  # [B,S,D]
-            captured[layer_idx] = h[0, token_indices, :].mean(dim=0).float().cpu()
+            for position, token_indices in position_token_indices.items():
+                if token_indices:
+                    captured[position][layer_idx] = (
+                        h[0, token_indices, :].mean(dim=0).float().cpu()
+                    )
         return hook
+
     for li in layers:
         handles.append(layer_stack[li].register_forward_hook(make_hook(li)))
     try:
-        enc = tok(
-            text,
-            return_tensors="pt",
-            add_special_tokens=add_special_tokens,
-        ).to(device)
-        _ = model(**enc)
+        _ = model(input_ids=input_ids)
     finally:
         for h in handles:
             h.remove()
-    missing = wanted - set(captured.keys())
-    if missing:
-        raise RuntimeError(f"Missing activations for layers {sorted(missing)}")
-    return {k: v.numpy() for k, v in captured.items()}
+    for position, token_indices in position_token_indices.items():
+        if not token_indices:
+            continue
+        missing = wanted - set(captured[position])
+        if missing:
+            raise RuntimeError(
+                f"Missing {position} activations for layers {sorted(missing)}"
+            )
+    return {
+        position: {
+            layer: value.numpy() for layer, value in layer_values.items()
+        }
+        for position, layer_values in captured.items()
+    }
 
 
 @torch.no_grad()
@@ -473,13 +507,30 @@ def validate_activation_artifacts(
         cfg["data"]["generated_path"],
         output_dir / "run_meta_activations.json",
     )
-    if activations.ndim != 3:
+    if activations.ndim != 4:
         raise RuntimeError(
-            f"Expected activations with shape [rows, layers, hidden], got {activations.shape}"
+            "Expected activations with shape [rows, positions, layers, hidden], "
+            f"got {activations.shape}. Re-run activation collection."
         )
     if activations.shape[0] != len(metadata):
         raise RuntimeError(
             f"Activation row count {activations.shape[0]} does not match metadata row count {len(metadata)}"
+        )
+    expected_positions = cfg["experiment"].get(
+        "activation_positions",
+        ["query_source"],
+    )
+    if activations.shape[1] != len(expected_positions):
+        raise RuntimeError(
+            f"Activation position count {activations.shape[1]} does not match "
+            f"configured positions {expected_positions}. Re-run activation collection."
+        )
+    if metadata and set(metadata[0].get("position_token_indices", {})) != set(
+        expected_positions
+    ):
+        raise RuntimeError(
+            "Activation metadata positions do not match the current config. "
+            "Re-run activation collection."
         )
     dataset_rows = read_jsonl(cfg["data"]["generated_path"])
     dataset_ids = [row.get("example_id") for row in dataset_rows]

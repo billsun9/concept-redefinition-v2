@@ -16,7 +16,7 @@ def sigmoid(x):
     return 1/(1+math.exp(-max(min(x, 60), -60)))
 
 
-def compute_train_deltas(meta, acts, layer_pos):
+def compute_train_deltas(meta, acts, position_pos, layer_pos):
     # Non-oracle: mean over train templates per pair of mapping - source_baseline.
     out = {}
     for pair_id, gp in meta.groupby("pair_id"):
@@ -24,7 +24,10 @@ def compute_train_deltas(meta, acts, layer_pos):
         for tid, sub in gp[gp.template_split == "train_template"].groupby("template_id"):
             c2i = {r.condition: int(r.row_idx) for r in sub.itertuples()}
             if "mapping" in c2i and "source_baseline" in c2i:
-                deltas.append(acts[c2i["mapping"], layer_pos] - acts[c2i["source_baseline"], layer_pos])
+                deltas.append(
+                    acts[c2i["mapping"], position_pos, layer_pos]
+                    - acts[c2i["source_baseline"], position_pos, layer_pos]
+                )
         if deltas:
             out[pair_id] = np.mean(deltas, axis=0)
     return out
@@ -42,6 +45,13 @@ def main():
     data = np.load(artifact_root / "activations.npz", allow_pickle=True)
     acts = data["activations"]
     collected_layers = data["layers"].tolist()
+    positions = [str(position) for position in data["positions"].tolist()]
+    if "query_source" not in positions:
+        raise RuntimeError(
+            "Patching requires query_source activations. "
+            "Add it to experiment.activation_positions and recollect activations."
+        )
+    query_position = positions.index("query_source")
     meta = pd.DataFrame(read_jsonl(artifact_root / "activation_meta.jsonl")).reset_index().rename(columns={"index":"row_idx"})
     validate_activation_artifacts(cfg, artifact_root, acts, meta.to_dict("records"))
     model, tok, device = load_model_and_tokenizer(cfg)
@@ -62,7 +72,7 @@ def main():
     records = []
     for layer in patch_layers:
         lpos = layer_to_pos[int(layer)]
-        deltas = compute_train_deltas(meta, acts, lpos)
+        deltas = compute_train_deltas(meta, acts, query_position, lpos)
         for r in tqdm(list(rows.itertuples()), desc=f"patch layer {layer}"):
             if r.pair_id not in deltas:
                 continue
@@ -87,8 +97,14 @@ def main():
             # source/target replace positive/negative controls from the same held-out template.
             sub = meta[(meta.pair_id == r.pair_id) & (meta.template_id == r.template_id)]
             c2i = {row.condition: int(row.row_idx) for row in sub.itertuples()}
-            source_vec = torch.tensor(acts[c2i["source_baseline"], lpos], dtype=torch.float32) if "source_baseline" in c2i else None
-            target_vec = torch.tensor(acts[c2i["target_baseline"], lpos], dtype=torch.float32) if "target_baseline" in c2i else None
+            source_vec = torch.tensor(
+                acts[c2i["source_baseline"], query_position, lpos],
+                dtype=torch.float32,
+            ) if "source_baseline" in c2i else None
+            target_vec = torch.tensor(
+                acts[c2i["target_baseline"], query_position, lpos],
+                dtype=torch.float32,
+            ) if "target_baseline" in c2i else None
             interventions = [
                 ("unpatched", None, 0.0, "add", None),
                 ("subtract_train_mean_delta", true_delta, None, "subtract", None),

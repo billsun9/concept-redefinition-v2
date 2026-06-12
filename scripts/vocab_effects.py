@@ -30,6 +30,13 @@ def main():
     data = np.load(artifact_root / "activations.npz", allow_pickle=True)
     acts = data["activations"]
     layers = data["layers"].tolist()
+    positions = [str(position) for position in data["positions"].tolist()]
+    if "query_source" not in positions:
+        raise RuntimeError(
+            "Vocabulary effects require query_source activations. "
+            "Add it to experiment.activation_positions and recollect activations."
+        )
+    query_position = positions.index("query_source")
     activation_meta = read_jsonl(artifact_root / "activation_meta.jsonl")
     validate_activation_artifacts(cfg, artifact_root, acts, activation_meta)
     meta = pd.DataFrame(activation_meta).reset_index().rename(columns={"index":"row_idx"})
@@ -48,7 +55,10 @@ def main():
             for tid, sub in gp[gp.template_split == "train_template"].groupby("template_id"):
                 c2i = {r.condition: int(r.row_idx) for r in sub.itertuples()}
                 if "mapping" in c2i and "source_baseline" in c2i:
-                    deltas.append(acts[c2i["mapping"], lpos] - acts[c2i["source_baseline"], lpos])
+                    deltas.append(
+                        acts[c2i["mapping"], query_position, lpos]
+                        - acts[c2i["source_baseline"], query_position, lpos]
+                    )
             if not deltas:
                 continue
             d = np.mean(deltas, axis=0)

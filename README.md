@@ -7,7 +7,9 @@ The V1 scaffold was intentionally exploratory. V2 addresses the most important m
 - no per-example oracle delta as the main causal result;
 - explicit matched target-mention controls;
 - held-out template evaluation;
+- activations at definition, query, pre-answer, and answer-label positions;
 - pair-specific probes trained only on baseline anchors and evaluated on held-out templates;
+- a mapping-vs-control detector with held-out template, pair, and category splits;
 - random-label probe controls;
 - non-oracle train-template mean deltas for patching;
 - wrong-pair and norm-matched random-vector patch controls;
@@ -263,7 +265,33 @@ large experiment output.
 
 Activations are captured with decoder-block forward hooks. Phase 4 patching uses the same hook interface, avoiding the final-hidden-state / block-output mismatch.
 
-Dataset construction records the exact character span of the queried word in the `Question:` line. Activation collection maps that span through any chat-template wrapper before token alignment, so repeated words in answer options cannot redirect collection to the wrong token.
+The activation tensor has shape:
+
+```text
+[examples, positions, layers, hidden_size]
+```
+
+The configured positions are:
+
+- `definition_source`: the first quoted source word in the `Note:` section;
+- `definition_target`: the first quoted target word in the `Note:` section;
+- `query_source`: the queried word in the `Question:` section;
+- `final_pre_answer`: the final prompt token before the answer continuation;
+- `answer_label`: the teacher-forced correct A/B label token or tokens.
+
+Definition positions that do not exist in a baseline prompt are stored as
+missing values and skipped by downstream analyses. At definition positions,
+the source anchor is `source_baseline/definition_source` and the target anchor
+is `target_baseline/definition_target`.
+
+Dataset construction records exact character spans in the `Note:` and
+`Question:` sections. Activation collection maps those spans through any chat
+template before token alignment, so repeated words in the question or options
+cannot redirect collection to the wrong token.
+
+Because five positions are collected by default, `activations.npz` can be
+roughly five times larger than the previous query-only artifact. It remains in
+`run.artifact_dir`, which should point to work storage for full runs.
 
 Downstream activation analyses validate the dataset hash, model identity, chat-template setting, row order, and row count before reusing saved artifacts.
 
@@ -279,8 +307,8 @@ Outputs:
 movement.csv
 movement_control_adjusted.csv
 movement_projection.csv
-movement.png
-movement_projection.png
+movement_by_position.png
+movement_projection_by_position.png
 ```
 
 These files are written to `run.report_dir`.
@@ -295,7 +323,9 @@ cos(x, target_baseline) - cos(x, source_baseline)
 
 2. projection onto target-minus-source directions estimated from train templates and evaluated on held-out templates.
 
-The relevant plot is not just whether `mapping` moves toward target; it is whether `mapping` exceeds `mention`, `negation`, and `identity` controls.
+Both outputs include `position` and `layer`. The relevant comparison is whether
+`mapping` exceeds each of `mention`, `identity`, `negation`, `unrelated`, and
+`reverse` at the same position and layer.
 
 ### 5. Linear probes
 
@@ -309,24 +339,64 @@ Outputs:
 probe.csv
 probe_selectivity.csv
 probe_random_label_controls.csv
-probe.png
+probe_by_position.png
 ```
 
 These files are written to `run.report_dir`.
 
-For each pair/layer, the probe is trained only on train-template `source_baseline` vs `target_baseline` activations. It is then evaluated on held-out-template mapping and controls.
+For each pair, position, and layer, the probe is trained only on train-template
+`source_baseline` vs `target_baseline` activations. It is then evaluated on
+held-out-template mapping and controls.
 
 This still does not fully solve lexical-identity leakage, but it is less tautological than training/evaluating on the same template family. Random-label controls are included.
 
 The important metric is selectivity:
 
 ```text
-P_target(mapping) - P_target(mention/negation/identity)
+P_target(mapping) - P_target(each matched control)
 ```
 
 not raw training accuracy.
 
-### 6. Phase 4 causal patching / reversal
+### 6. Mapping-vs-control detector
+
+```bash
+python scripts/train_mapping_detector.py config/default.yaml
+```
+
+Outputs:
+
+```text
+mapping_detector.csv
+mapping_detector_predictions.csv
+mapping_detector_random_label_controls.csv
+mapping_detector_by_position.png
+```
+
+This detector asks whether a contextual remapping rule is active rather than
+whether an activation resembles the source or target concept. Positive
+examples are `mapping`; negatives are `mention`, `identity`, `negation`,
+`reverse`, and `unrelated`.
+
+It is trained and evaluated independently at every position and layer under:
+
+- held-out carrier templates;
+- held-out concept-pair groups, with reverse-direction pairs kept together;
+- leave-one-concept-category-out evaluation.
+
+The detector uses balanced logistic regression, configurable L2
+regularization, and shuffled-training-label controls. Primary metrics are ROC
+AUC, average precision, and balanced accuracy. Category labels live in
+`data/concept_categories.json`.
+
+Important limitation: the current condition sentences use one wording family
+per condition. A detector can therefore exploit definition syntax as well as
+the model's internal rule state. Held-out pairs and categories remove lexical
+concept leakage, but they do not remove condition-template leakage. Treat this
+detector as a rule-context detector until multiple independently split
+paraphrase families are added.
+
+### 7. Phase 4 causal patching / reversal
 
 ```bash
 python scripts/patch_activations.py config/default.yaml
@@ -365,7 +435,10 @@ Controls:
 
 `replace_with_source_baseline` is still an oracle-ish positive control and should not be interpreted as evidence for reusable directions. The main causal claim should rely on train-template delta transfer beating wrong-pair/random controls.
 
-### 7. Vocabulary effects, not fake decomposition
+Patching and vocabulary effects continue to use the `query_source` activation
+slice explicitly.
+
+### 8. Vocabulary effects, not fake decomposition
 
 ```bash
 python scripts/vocab_effects.py config/default.yaml
@@ -393,10 +466,11 @@ Treat these as qualitative diagnostics, not a unique explanation.
 A strong pilot result would look like:
 
 1. Behavioral mapping condition is target-like, while mention/negation/identity controls remain source-like.
-2. Mapping activations move toward target more than matched target-mention controls.
-3. Pair-specific probes trained on baseline anchors classify held-out mapping as target-like more than controls and random-label probes.
-4. Train-template mean deltas transfer to held-out templates and reduce target-like behavior when subtracted.
-5. Wrong-pair and random norm-matched deltas do much less.
+2. Mapping exceeds every matched control at specific positions and layers.
+3. The final pre-answer state becomes target-like even if the query-source state remains source-like.
+4. A mapping-vs-control detector generalizes to held-out templates, pair groups, and categories while random-label controls remain near chance.
+5. Train-template mean deltas transfer to held-out templates and reduce target-like behavior when subtracted.
+6. Wrong-pair and random norm-matched deltas do much less.
 
 A weak or null result is also informative. For example, if `mention` and `mapping` look the same, then much of the apparent effect is lexical priming rather than redefinition.
 
@@ -406,11 +480,11 @@ A weak or null result is also informative. For example, if `mention` and `mappin
 
 - Add 200+ more concept pairs.
 - Add more carrier templates, especially naturalistic passages with delayed queries.
+- Add multiple definition-sentence paraphrase families and hold them out in the mapping detector.
 - Add long-context distance experiments.
 - Add head/MLP-specific patching instead of only whole block outputs.
 - Add bootstrap confidence intervals with pair and template as statistical units.
 - Add base-vs-instruct model comparisons.
-- Add explicit held-out pair direction transfer, not just held-out template transfer.
 - Add logit-lens/tuned-lens analysis at the same hook point.
 
 ---
@@ -419,6 +493,7 @@ A weak or null result is also informative. For example, if `mention` and `mappin
 
 - Pair-specific probes can still decode lexical identity. Do not overclaim from probes alone.
 - Whole-block patching can create off-distribution states. Interpret only relative to random/wrong-pair controls.
-- The activation is the mean over the token span corresponding to the explicitly recorded queried word in the `Question:` line.
+- Multi-token positions are represented by their mean decoder-block output.
+- `answer_label` uses the teacher-forced correct label and can contain direct behavioral/output information; interpret it separately from pre-answer states.
 - Instruct models should use their chat template; base models should not.
 - `vocab_effects.py` is qualitative.

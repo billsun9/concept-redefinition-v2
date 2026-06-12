@@ -1,6 +1,9 @@
 run:
   id: qwen25_7b_v2
-  output_dir: results/qwen25_7b_v2
+  # Large intermediates such as activations.npz and dataset.jsonl.
+  artifact_dir: results/qwen25_7b_v2
+  # Small CSV, JSONL, metadata, and plot outputs.
+  report_dir: results/qwen25_7b_v2
   seed: 13
 model:
   # Good A6000 default. Change to another decoder-only HF model if desired.
@@ -13,7 +16,6 @@ model:
   trust_remote_code: false
 data:
   pairs_path: data/concept_pairs.jsonl
-  generated_path: results/qwen25_7b_v2/dataset.jsonl
   max_pairs: 80
   templates_per_pair: 6
 experiment:

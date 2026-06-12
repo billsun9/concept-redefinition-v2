@@ -5,7 +5,16 @@ from pathlib import Path
 import pandas as pd
 import torch
 from tqdm import tqdm
-from redef.utils import load_yaml, read_jsonl, ensure_dir, load_model_and_tokenizer, maybe_chat_format, continuation_logprob, save_json, run_metadata
+from redef.utils import (
+    load_yaml,
+    read_jsonl,
+    report_dir,
+    load_model_and_tokenizer,
+    maybe_chat_format,
+    continuation_logprob,
+    save_json,
+    run_metadata,
+)
 
 
 def sigmoid(x):
@@ -17,7 +26,7 @@ def main():
     ap.add_argument("config")
     args = ap.parse_args()
     cfg = load_yaml(args.config)
-    out_dir = ensure_dir(cfg["run"]["output_dir"])
+    out_dir = report_dir(cfg)
     rows = read_jsonl(cfg["data"]["generated_path"])
     model, tok, device = load_model_and_tokenizer(cfg)
     use_chat = cfg["model"].get("use_chat_template", False)

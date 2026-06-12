@@ -11,7 +11,8 @@ from sklearn.metrics import roc_auc_score
 from redef.utils import (
     load_yaml,
     read_jsonl,
-    ensure_dir,
+    artifact_dir,
+    report_dir,
     set_seed,
     validate_activation_artifacts,
 )
@@ -31,12 +32,13 @@ def main():
     args = ap.parse_args()
     cfg = load_yaml(args.config)
     set_seed(cfg["run"].get("seed", 0))
-    out_dir = ensure_dir(cfg["run"]["output_dir"])
-    data = np.load(out_dir / "activations.npz", allow_pickle=True)
+    artifact_root = artifact_dir(cfg)
+    report_root = report_dir(cfg)
+    data = np.load(artifact_root / "activations.npz", allow_pickle=True)
     acts = data["activations"]
     layers = data["layers"].tolist()
-    activation_meta = read_jsonl(out_dir / "activation_meta.jsonl")
-    validate_activation_artifacts(cfg, out_dir, acts, activation_meta)
+    activation_meta = read_jsonl(artifact_root / "activation_meta.jsonl")
+    validate_activation_artifacts(cfg, artifact_root, acts, activation_meta)
     meta = pd.DataFrame(activation_meta).reset_index().rename(columns={"index":"row_idx"})
     C = float(cfg["probe"].get("regularization_C", 0.05))
     n_rand = int(cfg["probe"].get("n_random_label_controls", 20))
@@ -92,8 +94,8 @@ def main():
                                              "condition": row.condition, "p_target_random_label": float(p)})
     df = pd.DataFrame(records)
     rdf = pd.DataFrame(rand_records)
-    df.to_csv(out_dir / "probe.csv", index=False)
-    rdf.to_csv(out_dir / "probe_random_label_controls.csv", index=False)
+    df.to_csv(report_root / "probe.csv", index=False)
+    rdf.to_csv(report_root / "probe_random_label_controls.csv", index=False)
 
     plt.figure(figsize=(9,5))
     conds = ["mapping", "mention", "negation", "identity", "reverse", "unrelated"]
@@ -114,7 +116,7 @@ def main():
     plt.title("Pair-specific probes trained on baseline anchors; evaluated on held-out templates")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(out_dir / "probe.png", dpi=160)
+    plt.savefig(report_root / "probe.png", dpi=160)
 
     # Selectivity summary: mapping minus mention/negation.
     sel = []
@@ -124,8 +126,8 @@ def main():
             for ctrl in ["mention", "negation", "identity", "reverse", "unrelated"]:
                 if ctrl in d:
                     sel.append({"pair_id": keys[0], "layer": keys[1], "control": ctrl, "mapping_minus_control_probe": d["mapping"] - d[ctrl]})
-    pd.DataFrame(sel).to_csv(out_dir / "probe_selectivity.csv", index=False)
-    print(f"Wrote probe outputs to {out_dir}")
+    pd.DataFrame(sel).to_csv(report_root / "probe_selectivity.csv", index=False)
+    print(f"Wrote probe outputs to {report_root}")
     if len(df):
         print(df[df.eval_type == "condition_prob"].groupby("condition").p_target.mean())
 

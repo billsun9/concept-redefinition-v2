@@ -18,7 +18,33 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 def load_yaml(path: str | Path) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        cfg = yaml.safe_load(f)
+
+    run_cfg = cfg.setdefault("run", {})
+    legacy_output_dir = run_cfg.get("output_dir")
+    artifact_dir = run_cfg.get("artifact_dir", legacy_output_dir)
+    if artifact_dir is None:
+        artifact_dir = f"results/{run_cfg.get('id', 'default')}"
+    report_dir = run_cfg.get("report_dir", legacy_output_dir or artifact_dir)
+
+    run_cfg["artifact_dir"] = os.environ.get(
+        "REDEF_ARTIFACT_DIR", str(artifact_dir)
+    )
+    run_cfg["report_dir"] = os.environ.get(
+        "REDEF_REPORT_DIR", str(report_dir)
+    )
+    run_cfg.pop("output_dir", None)
+
+    data_cfg = cfg.setdefault("data", {})
+    data_cfg["generated_path"] = str(
+        Path(run_cfg["artifact_dir"]) / "dataset.jsonl"
+    )
+
+    cache_override = os.environ.get("REDEF_HF_CACHE_DIR")
+    if cache_override:
+        cfg.setdefault("model", {})["cache_dir"] = cache_override
+
+    return cfg
 
 
 def load_json(path: str | Path) -> Dict[str, Any]:
@@ -30,6 +56,14 @@ def ensure_dir(path: str | Path) -> Path:
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def artifact_dir(cfg: Dict[str, Any]) -> Path:
+    return ensure_dir(cfg["run"]["artifact_dir"])
+
+
+def report_dir(cfg: Dict[str, Any]) -> Path:
+    return ensure_dir(cfg["run"]["report_dir"])
 
 
 def read_jsonl(path: str | Path) -> List[Dict[str, Any]]:
@@ -338,8 +372,11 @@ def run_metadata(cfg: Dict[str, Any], dataset_path: str | Path) -> Dict[str, Any
     import transformers, sklearn, pandas
     return {
         "run_id": cfg["run"].get("id", "default"),
+        "artifact_dir": cfg["run"]["artifact_dir"],
+        "report_dir": cfg["run"]["report_dir"],
         "model_name": cfg["model"]["name"],
         "model_revision": cfg["model"].get("revision"),
+        "model_cache_dir": cfg["model"].get("cache_dir"),
         "use_chat_template": cfg["model"].get("use_chat_template", False),
         "dataset_path": str(dataset_path),
         "dataset_sha256": sha256_file(dataset_path) if Path(dataset_path).exists() else None,

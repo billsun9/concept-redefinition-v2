@@ -7,7 +7,8 @@ import torch
 from redef.utils import (
     load_yaml,
     read_jsonl,
-    ensure_dir,
+    artifact_dir,
+    report_dir,
     load_model_and_tokenizer,
     validate_activation_artifacts,
 )
@@ -24,12 +25,13 @@ def main():
     ap.add_argument("--top-k", type=int, default=20)
     args = ap.parse_args()
     cfg = load_yaml(args.config)
-    out_dir = ensure_dir(cfg["run"]["output_dir"])
-    data = np.load(out_dir / "activations.npz", allow_pickle=True)
+    artifact_root = artifact_dir(cfg)
+    report_root = report_dir(cfg)
+    data = np.load(artifact_root / "activations.npz", allow_pickle=True)
     acts = data["activations"]
     layers = data["layers"].tolist()
-    activation_meta = read_jsonl(out_dir / "activation_meta.jsonl")
-    validate_activation_artifacts(cfg, out_dir, acts, activation_meta)
+    activation_meta = read_jsonl(artifact_root / "activation_meta.jsonl")
+    validate_activation_artifacts(cfg, artifact_root, acts, activation_meta)
     meta = pd.DataFrame(activation_meta).reset_index().rename(columns={"index":"row_idx"})
     model, tok, device = load_model_and_tokenizer(cfg)
     emb = model.get_input_embeddings().weight.detach().float().cpu().numpy()
@@ -63,10 +65,10 @@ def main():
                 "top_embedding_cosine_tokens": top_tokens(tok, emb_scores, args.top_k),
                 "top_unembedding_logit_effect_tokens": top_tokens(tok, logit_scores, args.top_k),
             })
-    with open(out_dir / "vocab_effects.jsonl", "w", encoding="utf-8") as f:
+    with open(report_root / "vocab_effects.jsonl", "w", encoding="utf-8") as f:
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    print(f"Wrote {len(records)} rows to {out_dir/'vocab_effects.jsonl'}")
+    print(f"Wrote {len(records)} rows to {report_root/'vocab_effects.jsonl'}")
 
 if __name__ == "__main__":
     main()

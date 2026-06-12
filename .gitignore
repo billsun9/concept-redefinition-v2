@@ -7,6 +7,8 @@ __pycache__/
 venv/
 
 results/
+visualizations/
+/copy_helper.sh
 
 .idea/
 .vscode/

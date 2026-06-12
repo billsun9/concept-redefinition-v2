@@ -1,6 +1,7 @@
 from transformers import AutoTokenizer
 from redef.utils import (
     final_occurrence_span,
+    load_yaml,
     map_prompt_span_to_formatted,
     token_char_span,
 )
@@ -21,3 +22,31 @@ def test_map_prompt_span_to_chat_wrapper():
         raw, formatted, start, start + len("red")
     )
     assert formatted[mapped_start:mapped_end] == "red"
+
+
+def test_load_yaml_applies_storage_overrides(tmp_path, monkeypatch):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+run:
+  id: test
+  artifact_dir: results/test
+  report_dir: results/test
+model:
+  name: example/model
+  cache_dir: null
+data:
+  pairs_path: data/concept_pairs.jsonl
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("REDEF_ARTIFACT_DIR", "/work/artifacts/test")
+    monkeypatch.setenv("REDEF_REPORT_DIR", "/home/reports/test")
+    monkeypatch.setenv("REDEF_HF_CACHE_DIR", "/work/huggingface")
+
+    cfg = load_yaml(config_path)
+
+    assert cfg["run"]["artifact_dir"] == "/work/artifacts/test"
+    assert cfg["run"]["report_dir"] == "/home/reports/test"
+    assert cfg["data"]["generated_path"] == "/work/artifacts/test/dataset.jsonl"
+    assert cfg["model"]["cache_dir"] == "/work/huggingface"

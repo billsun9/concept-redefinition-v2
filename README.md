@@ -54,6 +54,8 @@ Outputs go to:
 results/smoke/
 ```
 
+By default, both large intermediates and small reports use this directory.
+
 ---
 
 ## A6000 run
@@ -69,6 +71,43 @@ Outputs go to:
 ```text
 results/qwen25_7b_v2/
 ```
+
+The output roots are configured separately:
+
+```yaml
+run:
+  artifact_dir: results/qwen25_7b_v2
+  report_dir: results/qwen25_7b_v2
+```
+
+- `artifact_dir` stores the generated dataset, activation metadata, and
+  `activations.npz`. Put this on high-capacity work storage.
+- `report_dir` stores CSVs, JSON diagnostics, run metadata, and PNG plots.
+  This can point to a smaller VS Code-visible home directory.
+
+Environment variables override the YAML paths:
+
+```bash
+export REDEF_ARTIFACT_DIR=/pmglocal/bys2107/research/concept-redefinition-v2/artifacts/qwen25_7b_v2
+export REDEF_REPORT_DIR=/insomnia001/home/bys2107/research/concept-redefinition-v2/visualizations/qwen25_7b_v2
+export REDEF_HF_CACHE_DIR=/pmglocal/bys2107/research/huggingface
+```
+
+`REDEF_HF_CACHE_DIR` is passed to both Hugging Face tokenizer and model
+loading. If it is unset and `model.cache_dir` is `null`, Hugging Face uses its
+normal cache configuration, including `HF_HOME`.
+
+For the home/work split used on Insomnia, keep a local `copy_helper.sh` in the
+repository root. It is intentionally ignored by Git because its paths are
+user- and cluster-specific. The included local template:
+
+1. copies source from `/insomnia001/home/...` to `/pmglocal/...`;
+2. preserves existing work-directory artifacts during `rsync --delete`;
+3. keeps model, Torch, generic, and temporary caches under `/pmglocal`;
+4. writes CSVs, JSON diagnostics, metadata, and plots back to
+   `visualizations/<run-id>/` in the home checkout;
+5. runs `bash scripts/run_all.sh config/default.yaml` from the copied work
+   checkout.
 
 You can change the model in `config/default.yaml`. Good alternatives:
 
@@ -128,6 +167,8 @@ behavior.csv
 behavior_calibrated.csv
 ```
 
+These files are written to `run.report_dir`.
+
 The model chooses between randomized A/B labels, not between different-length natural-language completions. This avoids the most obvious sequence-length confound.
 
 The calibrated score is:
@@ -151,6 +192,9 @@ activations.npz
 activation_meta.jsonl
 ```
 
+These files are written to `run.artifact_dir`. `activations.npz` is the main
+large experiment output.
+
 Activations are captured with decoder-block forward hooks. Phase 4 patching uses the same hook interface, avoiding the final-hidden-state / block-output mismatch.
 
 Dataset construction records the exact character span of the queried word in the `Question:` line. Activation collection maps that span through any chat-template wrapper before token alignment, so repeated words in answer options cannot redirect collection to the wrong token.
@@ -172,6 +216,8 @@ movement_projection.csv
 movement.png
 movement_projection.png
 ```
+
+These files are written to `run.report_dir`.
 
 Two analyses are run:
 
@@ -200,6 +246,8 @@ probe_random_label_controls.csv
 probe.png
 ```
 
+These files are written to `run.report_dir`.
+
 For each pair/layer, the probe is trained only on train-template `source_baseline` vs `target_baseline` activations. It is then evaluated on held-out-template mapping and controls.
 
 This still does not fully solve lexical-identity leakage, but it is less tautological than training/evaluating on the same template family. Random-label controls are included.
@@ -224,6 +272,8 @@ Outputs:
 patching.csv
 patching.png
 ```
+
+These files are written to `run.report_dir`.
 
 Main intervention:
 
@@ -260,6 +310,8 @@ Outputs:
 ```text
 vocab_effects.jsonl
 ```
+
+This file is written to `run.report_dir`.
 
 V2 intentionally renames this from “decomposition” to “vocabulary effects.” Token embeddings are a correlated overcomplete dictionary, not a basis. The script reports:
 

@@ -8,7 +8,8 @@ from redef.utils import (
     load_yaml,
     read_jsonl,
     cosine,
-    ensure_dir,
+    artifact_dir,
+    report_dir,
     validate_activation_artifacts,
 )
 
@@ -18,12 +19,13 @@ def main():
     ap.add_argument("config")
     args = ap.parse_args()
     cfg = load_yaml(args.config)
-    out_dir = ensure_dir(cfg["run"]["output_dir"])
-    data = np.load(out_dir / "activations.npz", allow_pickle=True)
+    artifact_root = artifact_dir(cfg)
+    report_root = report_dir(cfg)
+    data = np.load(artifact_root / "activations.npz", allow_pickle=True)
     acts = data["activations"]  # [N,L,D]
     layers = data["layers"].tolist()
-    meta = read_jsonl(out_dir / "activation_meta.jsonl")
-    validate_activation_artifacts(cfg, out_dir, acts, meta)
+    meta = read_jsonl(artifact_root / "activation_meta.jsonl")
+    validate_activation_artifacts(cfg, artifact_root, acts, meta)
     df = pd.DataFrame(meta).reset_index().rename(columns={"index": "row_idx"})
     use_centering = bool(cfg["experiment"].get("use_centering", True))
     centered = acts.copy()
@@ -60,7 +62,7 @@ def main():
                 adj.append({"pair_id": keys[0], "template_id": keys[1], "layer": keys[2],
                             "adjustment_control": base,
                             "mapping_minus_control": d["mapping"] - d[base]})
-    pd.DataFrame(adj).to_csv(out_dir / "movement_control_adjusted.csv", index=False)
+    pd.DataFrame(adj).to_csv(report_root / "movement_control_adjusted.csv", index=False)
 
     # Projection on train-template target-source directions; evaluate all templates but report split.
     proj_records = []
@@ -91,8 +93,8 @@ def main():
                                          "condition": cond, "layer": int(layer),
                                          "target_minus_source_projection": score})
     pdf = pd.DataFrame(proj_records)
-    mdf.to_csv(out_dir / "movement.csv", index=False)
-    pdf.to_csv(out_dir / "movement_projection.csv", index=False)
+    mdf.to_csv(report_root / "movement.csv", index=False)
+    pdf.to_csv(report_root / "movement_projection.csv", index=False)
 
     # Plots
     plt.figure(figsize=(9,5))
@@ -109,7 +111,7 @@ def main():
     plt.title("Layerwise representational movement with matched controls")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(out_dir / "movement.png", dpi=160)
+    plt.savefig(report_root / "movement.png", dpi=160)
 
     plt.figure(figsize=(9,5))
     for cond in ["mapping", "mention", "negation", "identity"]:
@@ -125,8 +127,8 @@ def main():
     plt.title("Held-out-template projection analysis")
     plt.legend()
     plt.tight_layout()
-    plt.savefig(out_dir / "movement_projection.png", dpi=160)
-    print(f"Wrote movement analyses to {out_dir}")
+    plt.savefig(report_root / "movement_projection.png", dpi=160)
+    print(f"Wrote movement analyses to {report_root}")
     print(mdf[mdf.condition.isin(["mapping","mention","negation","identity"])].groupby("condition").cos_to_target_minus_source.mean())
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import pandas as pd
 import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from redef.utils import (load_yaml, read_jsonl, ensure_dir, load_model_and_tokenizer, maybe_chat_format,
+from redef.utils import (load_yaml, read_jsonl, artifact_dir, report_dir, load_model_and_tokenizer, maybe_chat_format,
                          select_layers, continuation_logprob, score_with_patch, save_json, run_metadata,
                          validate_activation_artifacts)
 
@@ -35,14 +35,15 @@ def main():
     ap.add_argument("config")
     args = ap.parse_args()
     cfg = load_yaml(args.config)
-    out_dir = ensure_dir(cfg["run"]["output_dir"])
+    artifact_root = artifact_dir(cfg)
+    report_root = report_dir(cfg)
     rng = np.random.default_rng(cfg["run"].get("seed", 0))
     py_rng = random.Random(cfg["run"].get("seed", 0))
-    data = np.load(out_dir / "activations.npz", allow_pickle=True)
+    data = np.load(artifact_root / "activations.npz", allow_pickle=True)
     acts = data["activations"]
     collected_layers = data["layers"].tolist()
-    meta = pd.DataFrame(read_jsonl(out_dir / "activation_meta.jsonl")).reset_index().rename(columns={"index":"row_idx"})
-    validate_activation_artifacts(cfg, out_dir, acts, meta.to_dict("records"))
+    meta = pd.DataFrame(read_jsonl(artifact_root / "activation_meta.jsonl")).reset_index().rename(columns={"index":"row_idx"})
+    validate_activation_artifacts(cfg, artifact_root, acts, meta.to_dict("records"))
     model, tok, device = load_model_and_tokenizer(cfg)
     patch_layers = select_layers(model, cfg["patching"].get("layers", collected_layers))
     patch_layers = [l for l in patch_layers if l in collected_layers]
@@ -125,8 +126,8 @@ def main():
                                     "p_target_vs_source": sigmoid(lt - ls),
                                     "delta_norm": float(true_delta.norm())})
     df = pd.DataFrame(records)
-    df.to_csv(out_dir / "patching.csv", index=False)
-    save_json(out_dir / "run_meta_patching.json", run_metadata(cfg, cfg["data"]["generated_path"]) | {"patch_layers": patch_layers})
+    df.to_csv(report_root / "patching.csv", index=False)
+    save_json(report_root / "run_meta_patching.json", run_metadata(cfg, cfg["data"]["generated_path"]) | {"patch_layers": patch_layers})
 
     if len(df):
         plt.figure(figsize=(10,5))
@@ -140,8 +141,8 @@ def main():
         plt.title("Held-out-template query-token patching; non-oracle train-template deltas")
         plt.legend(fontsize=8)
         plt.tight_layout()
-        plt.savefig(out_dir / "patching.png", dpi=160)
-    print(f"Wrote patching results to {out_dir/'patching.csv'}")
+        plt.savefig(report_root / "patching.png", dpi=160)
+    print(f"Wrote patching results to {report_root/'patching.csv'}")
 
 if __name__ == "__main__":
     main()

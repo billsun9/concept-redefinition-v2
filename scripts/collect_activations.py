@@ -4,7 +4,7 @@ import argparse, json
 from pathlib import Path
 import numpy as np
 from tqdm import tqdm
-from redef.utils import (load_yaml, read_jsonl, write_jsonl, ensure_dir, load_model_and_tokenizer,
+from redef.utils import (load_yaml, read_jsonl, write_jsonl, artifact_dir, load_model_and_tokenizer,
                          maybe_chat_format, map_prompt_span_to_formatted, token_char_span,
                          collect_layer_token_means, select_layers, model_layers, save_json, run_metadata)
 
@@ -14,7 +14,7 @@ def main():
     ap.add_argument("config")
     args = ap.parse_args()
     cfg = load_yaml(args.config)
-    out_dir = ensure_dir(cfg["run"]["output_dir"])
+    out_dir = artifact_dir(cfg)
     rows = read_jsonl(cfg["data"]["generated_path"])
     model, tok, device = load_model_and_tokenizer(cfg)
     layer_prefix, layer_stack = model_layers(model)

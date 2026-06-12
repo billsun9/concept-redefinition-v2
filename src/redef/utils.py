@@ -287,6 +287,30 @@ def replace_hidden_in_output(output, new_hidden):
     return new_hidden
 
 
+def patch_hidden_states(
+    hidden: torch.Tensor,
+    token_indices: List[int],
+    patch_vector: torch.Tensor,
+    alpha: float,
+    mode: str,
+) -> torch.Tensor:
+    new_hidden = hidden.clone()
+    vector = patch_vector.to(device=hidden.device, dtype=hidden.dtype)
+    if mode == "add":
+        new_hidden[0, token_indices, :] = (
+            new_hidden[0, token_indices, :] + alpha * vector
+        )
+    elif mode == "subtract":
+        new_hidden[0, token_indices, :] = (
+            new_hidden[0, token_indices, :] - alpha * vector
+        )
+    elif mode == "replace":
+        new_hidden[0, token_indices, :] = vector
+    else:
+        raise ValueError(mode)
+    return new_hidden
+
+
 @torch.no_grad()
 def collect_layer_token_means(
     model,
@@ -339,18 +363,16 @@ def score_with_patch(
     add_special_tokens: bool = True,
 ) -> float:
     _, layer_stack = model_layers(model)
-    patch_vector = patch_vector.to(device=device)
+
     def hook(module, inp, out):
         h = hidden_from_module_output(out)
-        new_h = h.clone()
-        if mode == "add":
-            new_h[0, patch_token_indices, :] = new_h[0, patch_token_indices, :] + alpha * patch_vector
-        elif mode == "subtract":
-            new_h[0, patch_token_indices, :] = new_h[0, patch_token_indices, :] - alpha * patch_vector
-        elif mode == "replace":
-            new_h[0, patch_token_indices, :] = patch_vector
-        else:
-            raise ValueError(mode)
+        new_h = patch_hidden_states(
+            h,
+            patch_token_indices,
+            patch_vector,
+            alpha,
+            mode,
+        )
         return replace_hidden_in_output(out, new_h)
     handle = layer_stack[patch_layer].register_forward_hook(hook)
     try:

@@ -1,10 +1,12 @@
 from transformers import AutoTokenizer
+import torch
 import transformers
 from redef.utils import (
     final_occurrence_span,
     load_yaml,
     map_prompt_span_to_formatted,
     model_dtype_kwargs,
+    patch_hidden_states,
     token_char_span,
 )
 
@@ -60,3 +62,22 @@ def test_model_dtype_keyword_tracks_transformers_major_version(monkeypatch):
 
     monkeypatch.setattr(transformers, "__version__", "5.0.0")
     assert model_dtype_kwargs("auto") == {"dtype": "auto"}
+
+
+def test_patch_hidden_states_casts_vector_to_recipient_dtype():
+    hidden = torch.zeros((1, 3, 4), dtype=torch.bfloat16)
+    patch_vector = torch.ones(4, dtype=torch.float32)
+
+    patched = patch_hidden_states(
+        hidden,
+        token_indices=[1],
+        patch_vector=patch_vector,
+        alpha=0.5,
+        mode="add",
+    )
+
+    assert patched.dtype == torch.bfloat16
+    assert torch.equal(
+        patched[0, 1],
+        torch.full((4,), 0.5, dtype=torch.bfloat16),
+    )

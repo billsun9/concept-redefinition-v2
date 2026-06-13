@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse, json
 import numpy as np
 import pandas as pd
-import torch
 from redef.utils import (
     load_yaml,
     read_jsonl,

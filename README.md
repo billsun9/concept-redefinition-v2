@@ -164,6 +164,12 @@ cd /insomnia001/home/bys2107/research/concept-redefinition-v2
 python -u scripts/summarize_reports.py visualizations/smoke
 python -u scripts/summarize_reports.py visualizations/qwen25_7b_base_v2
 python -u scripts/summarize_reports.py visualizations/qwen25_7b_instruct_v2
+
+python -u scripts/summarize_reports.py \
+  visualizations/qwen25_7b_base_v2 \
+  visualizations/qwen25_7b_instruct_v2 \
+  --labels Base Instruct \
+  --comparison-only
 ```
 
 The script reads whichever report CSVs are present and prints:
@@ -174,8 +180,10 @@ The script reads whichever report CSVs are present and prints:
 - probe selectivity, held-out baseline AUC, and random-label baselines;
 - paired patching effects relative to each example's unpatched score.
 
-It also writes `analysis_summary.txt` into the selected visualization
-directory. No change to `copy_helper.sh` is required for report-only analysis.
+For one directory, it writes `analysis_summary.txt` into that visualization
+directory. For multiple directories, it writes `comparison_summary.txt` and
+`model_comparison.csv` into their common parent directory. No change to
+`copy_helper.sh` is required for report-only analysis.
 
 You can change the model in `config/default.yaml`. Good alternatives:
 
@@ -277,7 +285,7 @@ The configured positions are:
 - `definition_target`: the first quoted target word in the `Note:` section;
 - `query_source`: the queried word in the `Question:` section;
 - `final_pre_answer`: the final prompt token before the answer continuation;
-- `answer_label`: the teacher-forced correct A/B label token or tokens.
+- `answer_label_or_choice_token`: the teacher-forced correct A/B choice token or tokens.
 
 Definition positions that do not exist in a baseline prompt are stored as
 missing values and skipped by downstream analyses. At definition positions,
@@ -494,6 +502,6 @@ A weak or null result is also informative. For example, if `mention` and `mappin
 - Pair-specific probes can still decode lexical identity. Do not overclaim from probes alone.
 - Whole-block patching can create off-distribution states. Interpret only relative to random/wrong-pair controls.
 - Multi-token positions are represented by their mean decoder-block output.
-- `answer_label` uses the teacher-forced correct label and can contain direct behavioral/output information; interpret it separately from pre-answer states.
+- `answer_label_or_choice_token` uses the teacher-forced correct choice and can contain direct behavioral/output information; interpret it separately from pre-answer states.
 - Instruct models should use their chat template; base models should not.
 - `vocab_effects.py` is qualitative.

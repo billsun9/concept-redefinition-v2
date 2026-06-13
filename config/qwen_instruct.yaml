@@ -24,7 +24,7 @@ experiment:
   controls: [mapping, mention, negation, identity, reverse, unrelated]
   n_bootstrap: 1000
   use_centering: true
-  activation_positions: [definition_source, definition_target, query_source, final_pre_answer, answer_label]
+  activation_positions: [definition_source, definition_target, query_source, final_pre_answer, answer_label_or_choice_token]
 probe:
   test_size: 0.35
   regularization_C: 0.02

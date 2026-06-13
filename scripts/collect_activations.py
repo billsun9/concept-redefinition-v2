@@ -90,7 +90,9 @@ def main():
                 add_special_tokens,
             ),
             "final_pre_answer": [prompt_len - 1],
-            "answer_label": list(range(prompt_len, int(input_ids.shape[1]))),
+            "answer_label_or_choice_token": list(
+                range(prompt_len, int(input_ids.shape[1]))
+            ),
         }
         unknown = set(positions) - set(position_token_indices)
         if unknown:

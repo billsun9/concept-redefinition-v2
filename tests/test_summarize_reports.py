@@ -2,7 +2,9 @@ import pytest
 import pandas as pd
 
 from scripts.summarize_reports import (
+    best_comparison_rows,
     layer_control_gaps,
+    mean_comparison_rows,
     paired_patching_effects,
     read_csv,
 )
@@ -72,3 +74,45 @@ def test_paired_patching_effects_uses_matching_unpatched_rows():
 def test_read_csv_skips_empty_outputs(tmp_path):
     (tmp_path / "probe.csv").write_text("", encoding="utf-8")
     assert read_csv(tmp_path, "probe.csv") is None
+
+
+def test_best_comparison_rows_selects_each_models_best_layer():
+    comparison = pd.DataFrame(
+        [
+            {
+                "model": "Base",
+                "metric": "mapping_detector_roc_auc",
+                "split_type": "held_out_pairs",
+                "position": "final_pre_answer",
+                "layer": 7,
+                "value": 0.7,
+            },
+            {
+                "model": "Base",
+                "metric": "mapping_detector_roc_auc",
+                "split_type": "held_out_pairs",
+                "position": "final_pre_answer",
+                "layer": 15,
+                "value": 0.8,
+            },
+            {
+                "model": "Instruct",
+                "metric": "mapping_detector_roc_auc",
+                "split_type": "held_out_pairs",
+                "position": "final_pre_answer",
+                "layer": 15,
+                "value": 0.9,
+            },
+        ]
+    )
+    best = best_comparison_rows(
+        comparison,
+        "mapping_detector_roc_auc",
+    )
+    assert best.set_index("model").loc["Base", "layer"] == 15
+    assert best.set_index("model").loc["Instruct", "value"] == 0.9
+    means = mean_comparison_rows(
+        comparison,
+        "mapping_detector_roc_auc",
+    )
+    assert means.set_index("model").loc["Base", "value"] == pytest.approx(0.75)

@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 import argparse, math
-from pathlib import Path
 import pandas as pd
-import torch
 from tqdm import tqdm
 from redef.utils import (
     load_yaml,
